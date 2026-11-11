@@ -75,6 +75,8 @@
             this.label11 = new System.Windows.Forms.Label();
             this.panel3 = new System.Windows.Forms.Panel();
             this.label10 = new System.Windows.Forms.Label();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.tabRegistrarCompra = new System.Windows.Forms.TabPage();
             this.panel7 = new System.Windows.Forms.Panel();
             this.label21 = new System.Windows.Forms.Label();
@@ -98,8 +100,6 @@
             this.label15 = new System.Windows.Forms.Label();
             this.panel4 = new System.Windows.Forms.Panel();
             this.label14 = new System.Windows.Forms.Label();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.pnlEncabezado.SuspendLayout();
             this.tabControlProveedores.SuspendLayout();
             this.tabRegistrarProveedor.SuspendLayout();
@@ -110,6 +110,8 @@
             this.tabProductosProveedor.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvCatalogoProveedor)).BeginInit();
             this.panel3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.tabRegistrarCompra.SuspendLayout();
             this.panel7.SuspendLayout();
             this.panel6.SuspendLayout();
@@ -118,8 +120,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.nudCostoUnitarioCompra)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudCantidadCompra)).BeginInit();
             this.panel4.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.SuspendLayout();
             // 
             // pnlEncabezado
@@ -680,6 +680,26 @@
             this.label10.Text = "CATÁLOGO DE PROVEEDORES Y MATERIALES";
             this.label10.Click += new System.EventHandler(this.label10_Click);
             // 
+            // pictureBox1
+            // 
+            this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
+            this.pictureBox1.Location = new System.Drawing.Point(-105, 286);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(408, 266);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pictureBox1.TabIndex = 43;
+            this.pictureBox1.TabStop = false;
+            // 
+            // pictureBox2
+            // 
+            this.pictureBox2.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox2.Image")));
+            this.pictureBox2.Location = new System.Drawing.Point(847, 60);
+            this.pictureBox2.Name = "pictureBox2";
+            this.pictureBox2.Size = new System.Drawing.Size(258, 230);
+            this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pictureBox2.TabIndex = 44;
+            this.pictureBox2.TabStop = false;
+            // 
             // tabRegistrarCompra
             // 
             this.tabRegistrarCompra.Controls.Add(this.panel7);
@@ -742,6 +762,7 @@
             this.dgvCompras.Name = "dgvCompras";
             this.dgvCompras.Size = new System.Drawing.Size(680, 305);
             this.dgvCompras.TabIndex = 0;
+            this.dgvCompras.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvCompras_CellContentClick);
             // 
             // panel5
             // 
@@ -807,10 +828,18 @@
             // 
             // nudCostoUnitarioCompra
             // 
+            this.nudCostoUnitarioCompra.DecimalPlaces = 2;
             this.nudCostoUnitarioCompra.Location = new System.Drawing.Point(202, 178);
+            this.nudCostoUnitarioCompra.Maximum = new decimal(new int[] {
+            10000000,
+            0,
+            0,
+            0});
             this.nudCostoUnitarioCompra.Name = "nudCostoUnitarioCompra";
+            this.nudCostoUnitarioCompra.RightToLeft = System.Windows.Forms.RightToLeft.No;
             this.nudCostoUnitarioCompra.Size = new System.Drawing.Size(149, 20);
             this.nudCostoUnitarioCompra.TabIndex = 51;
+            this.nudCostoUnitarioCompra.ValueChanged += new System.EventHandler(this.nudCostoUnitarioCompra_ValueChanged);
             // 
             // nudCantidadCompra
             // 
@@ -925,26 +954,6 @@
             this.label14.TabIndex = 6;
             this.label14.Text = "REGISTRAR COMPRA DE MATERIALES";
             // 
-            // pictureBox1
-            // 
-            this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
-            this.pictureBox1.Location = new System.Drawing.Point(-105, 286);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(408, 266);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox1.TabIndex = 43;
-            this.pictureBox1.TabStop = false;
-            // 
-            // pictureBox2
-            // 
-            this.pictureBox2.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox2.Image")));
-            this.pictureBox2.Location = new System.Drawing.Point(847, 60);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(258, 230);
-            this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox2.TabIndex = 44;
-            this.pictureBox2.TabStop = false;
-            // 
             // Form14
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -973,6 +982,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.dgvCatalogoProveedor)).EndInit();
             this.panel3.ResumeLayout(false);
             this.panel3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.tabRegistrarCompra.ResumeLayout(false);
             this.panel7.ResumeLayout(false);
             this.panel7.PerformLayout();
@@ -984,8 +995,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.nudCantidadCompra)).EndInit();
             this.panel4.ResumeLayout(false);
             this.panel4.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.ResumeLayout(false);
 
         }
