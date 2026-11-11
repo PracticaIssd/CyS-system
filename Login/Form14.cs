@@ -1479,6 +1479,15 @@ namespace Login
             }
         }
 
+        private void dgvCompras_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void nudCostoUnitarioCompra_ValueChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }
     
