@@ -428,6 +428,7 @@ namespace Login
             Panel historial = CrearTarjeta();
             tabla.Controls.Add(historial, 0, 3);
             dgvPedidosTerceros = CrearGrilla();
+            ConfigurarGrillaPedidos(dgvPedidosTerceros);
 
             PrepararTarjetaGrilla(
                 historial,
@@ -469,8 +470,120 @@ namespace Login
                 if (cboPedido.SelectedValue is int)
                     CargarTrabajos(Convert.ToInt32(cboPedido.SelectedValue));
             };
-            btnRegistrarPedido.Click += (s, e) => RegistrarPedidoTercero();
+            btnRegistrarPedido.Click += (s, e) =>
+            {
+                if (idPedidoEnEdicion.HasValue)
+                    GuardarModificacionPedido();
+                else
+                    RegistrarPedidoTercero();
+            };
         }
+
+        private void GuardarModificacionPedido()
+        {
+            if (!idPedidoEnEdicion.HasValue)
+                return;
+
+            if (!(cboPedido.SelectedValue is int) ||
+                !(cboTrabajo.SelectedValue is int) ||
+                !(cboProveedor.SelectedValue is int))
+            {
+                MessageBox.Show("Complete el pedido, producto y fabricante.");
+                return;
+            }
+
+            if (dtpFechaEntrega.Value.Date < DateTime.Today)
+            {
+                MessageBox.Show("La fecha de entrega no puede ser anterior a hoy.");
+                return;
+            }
+
+            try
+            {
+                using (SqlConnection conexion = new SqlConnection(cadenaConexion))
+                using (SqlCommand comando = new SqlCommand(@"
+            UPDATE dbo.PedidosTerceros
+            SET IdPedido = @IdPedido,
+                IdDetalle = @IdDetalle,
+                IdProveedor = @IdProveedor,
+                CantidadSolicitada = @Cantidad,
+                FechaEntregaEstimada = @FechaEntrega,
+                Observaciones = @Observaciones
+            WHERE IdPedidoTercero = @Id
+              AND Estado = 'Pendiente'
+              AND NOT EXISTS
+              (
+                  SELECT 1
+                  FROM dbo.RecepcionesTerceros
+                  WHERE IdPedidoTercero = @Id
+              )", conexion))
+                {
+                    comando.Parameters.Add("@Id", SqlDbType.Int)
+                        .Value = idPedidoEnEdicion.Value;
+
+                    comando.Parameters.Add("@IdPedido", SqlDbType.Int)
+                        .Value = Convert.ToInt32(cboPedido.SelectedValue);
+
+                    comando.Parameters.Add("@IdDetalle", SqlDbType.Int)
+                        .Value = Convert.ToInt32(cboTrabajo.SelectedValue);
+
+                    comando.Parameters.Add("@IdProveedor", SqlDbType.Int)
+                        .Value = Convert.ToInt32(cboProveedor.SelectedValue);
+
+                    comando.Parameters.Add("@Cantidad", SqlDbType.Int)
+                        .Value = (int)nudCantidad.Value;
+
+                    comando.Parameters.Add("@FechaEntrega", SqlDbType.DateTime)
+                        .Value = dtpFechaEntrega.Value.Date;
+
+                    comando.Parameters.Add("@Observaciones", SqlDbType.NVarChar, -1)
+                        .Value = string.IsNullOrWhiteSpace(txtObservaciones.Text)
+                            ? (object)DBNull.Value
+                            : txtObservaciones.Text.Trim();
+
+                    conexion.Open();
+
+                    int filas = comando.ExecuteNonQuery();
+
+                    if (filas == 0)
+                    {
+                        MessageBox.Show(
+                            "No se pudo modificar el pedido. " +
+                            "Puede que ya tenga recepciones o no esté pendiente.");
+                        return;
+                    }
+                }
+
+                MessageBox.Show(
+                    "Pedido modificado correctamente.",
+                    "C.E SYSTEM",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                idPedidoEnEdicion = null;
+                btnRegistrarPedido.Text = "Registrar pedido";
+
+                cboPedido.SelectedIndex = -1;
+                cboTrabajo.DataSource = null;
+                cboProveedor.SelectedIndex = -1;
+                nudCantidad.Value = 1;
+                dtpFechaEntrega.Value = DateTime.Today.AddDays(7);
+                txtObservaciones.Clear();
+
+                CargarPedidosTerceros();
+                CargarHistorial();
+                ActualizarIndicadoresRecepcion();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Error al modificar el pedido:\n" + ex.Message,
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
         private int? ObtenerPedidoSeleccionado()
         {
             if (dgvPedidosTerceros.CurrentRow == null ||
@@ -735,11 +848,36 @@ namespace Login
             contenido.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
             contenido.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
             contenido.Controls.Add(CrearTituloSeccion("HISTORIAL GENERAL DE PEDIDOS"), 0, 0);
+
             dgvConsultaPedidos = CrearGrilla();
+            ConfigurarGrillaPedidos(dgvConsultaPedidos);
             contenido.Controls.Add(dgvConsultaPedidos, 0, 1);
+
             contenido.Controls.Add(CrearTituloSeccion("ENTREGAS DEL PEDIDO SELECCIONADO"), 0, 2);
+
             dgvEntregasSeguimiento = CrearGrilla();
+
+            dgvEntregasSeguimiento.AutoGenerateColumns = true;
+            dgvEntregasSeguimiento.AllowUserToAddRows = false;
+            dgvEntregasSeguimiento.ReadOnly = true;
+            dgvEntregasSeguimiento.AutoSizeColumnsMode =
+                DataGridViewAutoSizeColumnsMode.Fill;
+
             contenido.Controls.Add(dgvEntregasSeguimiento, 0, 3);
+
+            foreach (DataGridViewColumn columna in dgvEntregasSeguimiento.Columns)
+            {
+                columna.DataPropertyName = columna.Name;
+            }
+
+            dgvEntregasSeguimiento.AutoSizeColumnsMode =
+                DataGridViewAutoSizeColumnsMode.Fill;
+
+            dgvEntregasSeguimiento.ColumnHeadersVisible = true;
+            dgvEntregasSeguimiento.AllowUserToAddRows = false;
+
+            contenido.Controls.Add(dgvEntregasSeguimiento, 0, 3);
+
             historial.Controls.Add(contenido);
 
             btnBuscarSeguimiento.Click += (s, e) => AplicarFiltrosSeguimiento();
@@ -779,9 +917,12 @@ namespace Login
             actualizandoFiltrosSeguimiento = false;
         }
 
+
         private void AplicarFiltrosSeguimiento()
         {
-            if (actualizandoFiltrosSeguimiento || datosSeguimiento == null) return;
+            if (actualizandoFiltrosSeguimiento || datosSeguimiento == null)
+                return;
+
             string pedido = txtFiltroPedido.Text.Trim();
             string fabricante = cboFiltroFabricante.SelectedItem as string ?? "Todos";
             string estado = cboFiltroEstado.SelectedItem as string ?? "Todos";
@@ -793,53 +934,109 @@ namespace Login
             }
 
             DataTable filtrada = datosSeguimiento.Clone();
+
             foreach (DataRow fila in datosSeguimiento.Rows)
             {
-                if (pedido.Length > 0 && Convert.ToString(fila["N.º Pedido"]) != pedido) continue;
-                if (fabricante != "Todos" && Convert.ToString(fila["Fabricante"]) != fabricante) continue;
-                if (estado != "Todos" && Convert.ToString(fila["Estado"]) != estado) continue;
+                if (pedido.Length > 0 &&
+                    Convert.ToString(fila["N.º Pedido"]) != pedido)
+                    continue;
+
+                if (fabricante != "Todos" &&
+                    Convert.ToString(fila["Fabricante"]) != fabricante)
+                    continue;
+
+                if (estado != "Todos" &&
+                    Convert.ToString(fila["Estado"]) != estado)
+                    continue;
+
                 filtrada.ImportRow(fila);
             }
+
             dgvConsultaPedidos.DataSource = filtrada;
-            ColorearPedidos(dgvConsultaPedidos);
+
+            // Mantener los colores de los estados.
             dgvConsultaPedidos.ClearSelection();
-            dgvEntregasSeguimiento.DataSource = null;
+
+            // Mantener visible la estructura de las entregas.
+            MostrarEntregasVacias();
         }
+
+        private void MostrarEntregasVacias()
+        {
+            DataTable tabla = new DataTable();
+
+            tabla.Columns.Add("N.º Recepción", typeof(int));
+            tabla.Columns.Add("Fecha de entrega", typeof(DateTime));
+            tabla.Columns.Add("Unidades recibidas", typeof(int));
+            tabla.Columns.Add("Observaciones", typeof(string));
+
+            dgvEntregasSeguimiento.AutoGenerateColumns = true;
+            dgvEntregasSeguimiento.DataSource = tabla;
+            dgvEntregasSeguimiento.ClearSelection();
+        }
+
+
 
         private void CargarEntregasSeleccionadas()
         {
-            if (dgvEntregasSeguimiento == null || dgvConsultaPedidos.CurrentRow == null ||
-                dgvConsultaPedidos.SelectedRows.Count == 0) return;
+            if (dgvEntregasSeguimiento == null ||
+                dgvConsultaPedidos.CurrentRow == null ||
+                dgvConsultaPedidos.SelectedRows.Count == 0)
+            {
+                MostrarEntregasVacias();
+                return;
+            }
+
             object valor = dgvConsultaPedidos.CurrentRow.Cells["N.º Pedido"].Value;
-            if (valor == null || valor == DBNull.Value) return;
+
+            if (valor == null || valor == DBNull.Value)
+            {
+                MostrarEntregasVacias();
+                return;
+            }
+
             int id = Convert.ToInt32(valor);
+
             try
             {
                 using (SqlConnection conexion = new SqlConnection(cadenaConexion))
                 using (SqlCommand comando = new SqlCommand(@"
-                    SELECT IdRecepcion AS [N.º Recepción],
-                           FechaRecepcion AS [Fecha de entrega],
-                           CantidadRecibida AS [Unidades recibidas],
-                           Observaciones
-                    FROM dbo.RecepcionesTerceros
-                    WHERE IdPedidoTercero = @Id
-                    ORDER BY FechaRecepcion DESC, IdRecepcion DESC", conexion))
+            SELECT
+                IdRecepcion AS [N.º Recepción],
+                FechaRecepcion AS [Fecha de entrega],
+                CantidadRecibida AS [Unidades recibidas],
+                Observaciones
+            FROM dbo.RecepcionesTerceros
+            WHERE IdPedidoTercero = @Id
+            ORDER BY FechaRecepcion DESC, IdRecepcion DESC", conexion))
                 {
                     comando.Parameters.Add("@Id", SqlDbType.Int).Value = id;
+
                     DataTable tabla = new DataTable();
+
                     using (SqlDataAdapter adaptador = new SqlDataAdapter(comando))
                         adaptador.Fill(tabla);
+
+                    if (tabla.Rows.Count == 0)
+                    {
+                        DataRow fila = tabla.NewRow();
+                        fila["Observaciones"] =
+                            "Este pedido todavía no tiene entregas registradas.";
+                        tabla.Rows.Add(fila);
+                    }
+
+                    dgvEntregasSeguimiento.AutoGenerateColumns = true;
                     dgvEntregasSeguimiento.DataSource = tabla;
                     dgvEntregasSeguimiento.ClearSelection();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al consultar entregas: " + ex.Message);
+                MessageBox.Show(
+                    "Error al consultar entregas: " + ex.Message);
             }
         }
 
-        // Pendientes: se conectarán con las tablas de SQL Server en el siguiente paso.
 
         private void CargarPedidos()
         {
@@ -1510,5 +1707,79 @@ namespace Login
 
             return numero;
         }
+
+
+        private void ConfigurarGrillaPedidos(DataGridView grilla)
+        {
+            grilla.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            grilla.MultiSelect = false;
+            grilla.ReadOnly = true;
+            grilla.AllowUserToAddRows = false;
+            grilla.RowHeadersVisible = false;
+
+            // Resaltar claramente el pedido seleccionado.
+            grilla.DefaultCellStyle.SelectionBackColor =
+                Color.FromArgb(109, 90, 230);
+
+            grilla.DefaultCellStyle.SelectionForeColor = Color.White;
+
+            grilla.CellFormatting -= ColorearPedidos;
+            grilla.CellFormatting += ColorearPedidos;
+        }
+
+        private void ColorearPedidos(
+            object sender,
+            DataGridViewCellFormattingEventArgs e)
+        {
+            DataGridView grilla = sender as DataGridView;
+
+            if (grilla == null || e.RowIndex < 0)
+                return;
+
+            if (!grilla.Columns.Contains("Estado"))
+                return;
+
+            DataGridViewRow fila = grilla.Rows[e.RowIndex];
+
+            string estado = Convert.ToString(
+                fila.Cells["Estado"].Value)?.Trim() ?? "";
+
+            Color fondo = Color.White;
+            Color texto = Color.Black;
+
+            switch (estado.ToLowerInvariant())
+            {
+                case "pendiente":
+                    fondo = Color.FromArgb(255, 218, 218);
+                    texto = Color.DarkRed;
+                    break;
+
+                case "recibido":
+                    fondo = Color.FromArgb(207, 245, 218);
+                    texto = Color.DarkGreen;
+                    break;
+
+                case "recibido parcialmente":
+                case "en proceso":
+                    fondo = Color.FromArgb(255, 242, 190);
+                    texto = Color.FromArgb(130, 85, 0);
+                    break;
+
+                case "cancelado":
+                    fondo = Color.FromArgb(225, 225, 225);
+                    texto = Color.DimGray;
+                    break;
+            }
+
+            e.CellStyle.BackColor = fondo;
+            e.CellStyle.ForeColor = texto;
+
+            // Mantener el violeta cuando se selecciona una fila.
+            e.CellStyle.SelectionBackColor =
+                Color.FromArgb(109, 90, 230);
+
+            e.CellStyle.SelectionForeColor = Color.White;
+        }
+
     }
 }
